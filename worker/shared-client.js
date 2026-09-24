@@ -10,15 +10,28 @@
   }
   const id = (value) => encodeURIComponent(value);
 
-  async function request(url, options) {
-    const response = await fetch(url, options);
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error(body.error || "REQUEST_FAILED");
-      error.code = body.error;
+  async function request(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(body.error || "REQUEST_FAILED");
+        error.code = body.error;
+        throw error;
+      }
+      return body;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        const timeoutError = new Error("REQUEST_TIMEOUT");
+        timeoutError.code = "REQUEST_TIMEOUT";
+        throw timeoutError;
+      }
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return body;
   }
 
   function messageFor(error) {
@@ -158,7 +171,19 @@
       else renderDemoUsers();
       const newName = document.getElementById("demoNewName"); if (newName) newName.value = "";
       toast(adding ? `השם ${name} נוסף בהצלחה. ברוכים הבאים!` : `שלום ${name}! נכנסת לאתר`);
-    } catch (error) { toast(messageFor(error)); }
+    } catch (error) {
+      if (adding && (error?.code === "REQUEST_TIMEOUT" || error?.code === "REQUEST_FAILED" || !error?.code)) {
+        const updatedFamily = [...localFamily.filter(member => member.name !== name), { id: "local-" + Date.now(), name, bio: "נוסף/ה דרך מסך הכניסה", photo: "" }];
+        localStorage.setItem(FAMILY_KEY, JSON.stringify(updatedFamily));
+        shared.family = updatedFamily;
+        currentDemoUser = name;
+        localStorage.setItem(DEMO_USER_KEY, name);
+        renderSharedFamily();
+        toast("השם נשמר במכשיר. ננסה לסנכרן אותו עם הספר המשותף כשיהיה חיבור.");
+      } else {
+        toast(messageFor(error));
+      }
+    }
     finally { if (button) { button.disabled = false; button.textContent = "כניסה לאתר"; } }
   };
 
@@ -341,6 +366,18 @@
   }
 
   async function initializeShared() {
+    // Render any locally cached family names immediately so the login screen never
+    // stays on "טוען שמות…" while the shared API is loading.
+    if (localFamily.length || localRecipes.length) {
+      shared.family = localFamily;
+      shared.recipes = localRecipes;
+      renderSharedFamily();
+      renderRecipes();
+      updateSharedStats();
+    } else {
+      renderDemoUsers();
+    }
+
     try {
       let data = await request("/api/data");
       if (!(data.recipes || []).length && localRecipes.length) {
@@ -353,9 +390,18 @@
       renderSharedFamily(); renderHeroImage(); renderSiteLogo(); renderRecipes(); updateSharedStats(); renderFeatureSuite();
     } catch (error) {
       console.error(error);
+      shared.ready = false;
+      // Keep the local family list usable when the shared service is temporarily unavailable.
+      shared.family = localFamily;
+      shared.recipes = localRecipes;
+      renderSharedFamily();
+      renderRecipes();
+      updateSharedStats();
       const note = document.getElementById("familyMessage");
-      if (note) note.textContent = "לא הצלחנו לטעון את הספר המשותף. נסו לרענן את הדף.";
-      toast("לא הצלחנו לטעון את המתכונים המשותפים.");
+      if (note) note.textContent = error?.code === "REQUEST_TIMEOUT"
+        ? "החיבור לספר המשותף לוקח זמן. אפשר להיכנס עם השמות שכבר נשמרו במכשיר ולנסות שוב אחר כך."
+        : "לא הצלחנו לטעון כרגע את הספר המשותף. אפשר להיכנס עם השמות שנשמרו במכשיר ולרענן שוב.";
+      toast("הספר נטען במצב מקומי זמני. אפשר לרענן שוב בעוד רגע.");
     }
   }
 
