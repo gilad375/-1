@@ -1,0 +1,1 @@
+ALTER TABLE `recipes` ADD `gluten_free` integer DEFAULT false NOT NULL;

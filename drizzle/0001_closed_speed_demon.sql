@@ -1,0 +1,1 @@
+CREATE INDEX `idx_recipe_images_recipe_id` ON `recipe_images` (`recipe_id`);
