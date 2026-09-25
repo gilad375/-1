@@ -25,7 +25,7 @@ function recipeValues(input = {}) {
 }
 
 async function listData(env) {
-  const [recipeRows, imageRows, familyRows, heroSetting, logoSetting, approvalRows, tryoutRows, menuRows, storyRows, planRows, pollRows, eventRows, memoryRows, ratingRows] = await Promise.all([
+  const [recipeRows, imageRows, familyRows, heroSetting, logoSetting, approvalRows, tryoutRows, menuRows, storyRows, planRows, pollRows, eventRows, memoryRows, ratingRows, toolsRows, cookRows, learningRows] = await Promise.all([
     env.DB.prepare("SELECT * FROM recipes ORDER BY created_at DESC").all(),
     env.DB.prepare("SELECT recipe_id, object_key, position FROM recipe_images ORDER BY position ASC").all(),
     env.DB.prepare("SELECT * FROM family_members ORDER BY created_at ASC").all(),
@@ -40,6 +40,9 @@ async function listData(env) {
     env.DB.prepare("SELECT * FROM family_events ORDER BY event_date ASC").all(),
     env.DB.prepare("SELECT * FROM family_memories ORDER BY created_at DESC").all(),
     env.DB.prepare("SELECT recipe_id,member_name,rating FROM recipe_ratings").all(),
+    env.DB.prepare("SELECT * FROM recipe_family_tools").all(),
+    env.DB.prepare("SELECT recipe_id,member_name,task FROM recipe_cooks ORDER BY created_at ASC").all(),
+    env.DB.prepare("SELECT recipe_id,member_name FROM recipe_learnings ORDER BY created_at ASC").all(),
   ]);
   const imageMap = new Map();
   for (const row of imageRows.results) {
@@ -57,14 +60,18 @@ async function listData(env) {
     tryoutMap.get(row.recipe_id).push({ author: row.member_name, image: mediaUrl(row.image_key), createdAt: new Date(row.created_at).toISOString() });
   }
   const ratingMap = new Map(); for (const row of ratingRows.results) { if (!ratingMap.has(row.recipe_id)) ratingMap.set(row.recipe_id, []); ratingMap.get(row.recipe_id).push({ member: row.member_name, value: row.rating }); }
+  const toolsMap = new Map(toolsRows.results.map((row) => { let taste = {}; try { taste = JSON.parse(row.taste_json || "{}"); } catch {} return [row.recipe_id, { kids: Boolean(row.kids), golden: Boolean(row.golden), taste, equipment: row.equipment || "", secretTip: row.secret_tip || "" }]; }));
+  const cooksMap = new Map(); for (const row of cookRows.results) { if (!cooksMap.has(row.recipe_id)) cooksMap.set(row.recipe_id, []); cooksMap.get(row.recipe_id).push({ member: row.member_name, task: row.task }); }
+  const learningMap = new Map(); for (const row of learningRows.results) { if (!learningMap.has(row.member_name)) learningMap.set(row.member_name, []); learningMap.get(row.member_name).push(row.recipe_id); }
   return {
     recipes: recipeRows.results.map((r) => ({
       id: r.id, name: r.name, author: r.author, category: r.category, time: r.time,
       servings: r.servings, difficulty: r.difficulty, story: r.story, origin: r.origin || "", dedication: r.dedication || "", dietaryTag: r.dietary_tag || "לא צוין",
       ingredients: r.ingredients, steps: r.steps, glutenFree: Boolean(r.gluten_free), createdAt: new Date(r.created_at).toISOString(),
       images: imageMap.get(r.id) || [], video: mediaUrl(r.video_key), triedBy: approvalMap.get(r.id) || [], tryouts: tryoutMap.get(r.id) || [], ratings: ratingMap.get(r.id) || [],
+      ...(toolsMap.get(r.id) || { kids: false, golden: false, taste: {}, equipment: "", secretTip: "" }), cooks: cooksMap.get(r.id) || [],
     })),
-    family: familyRows.results.map((m) => ({ id: m.id, name: m.name, bio: m.bio, photo: mediaUrl(m.photo_key) })),
+    family: familyRows.results.map((m) => ({ id: m.id, name: m.name, bio: m.bio, photo: mediaUrl(m.photo_key), learnedRecipeIds: learningMap.get(m.name) || [] })),
     heroImage: mediaUrl(heroSetting?.value),
     logoImage: mediaUrl(logoSetting?.value),
     menus: menuRows.results.map((m) => ({ id: m.id, title: m.title, recipeIds: JSON.parse(m.recipe_ids), createdAt: new Date(m.created_at).toISOString() })),
@@ -317,6 +324,37 @@ async function rateRecipe(request, env, recipeId) {
     .bind(crypto.randomUUID(), recipeId, member, rating, Date.now()).run(); return json({ ok: true });
 }
 
+async function saveRecipeFamilyTools(request, env, recipeId) {
+  if (!await env.DB.prepare("SELECT id FROM recipes WHERE id=?").bind(recipeId).first()) return json({ error: "NOT_FOUND" }, 404);
+  const input = await request.json().catch(() => ({}));
+  const taste = {};
+  for (const key of ["sweet", "salty", "spicy", "sour"]) taste[key] = Math.max(0, Math.min(5, Math.round(Number(input.taste?.[key]) || 0)));
+  await env.DB.prepare("INSERT INTO recipe_family_tools (recipe_id,kids,golden,taste_json,equipment,secret_tip) VALUES (?,?,?,?,?,?) ON CONFLICT(recipe_id) DO UPDATE SET kids=excluded.kids,golden=excluded.golden,taste_json=excluded.taste_json,equipment=excluded.equipment,secret_tip=excluded.secret_tip")
+    .bind(recipeId, input.kids ? 1 : 0, input.golden ? 1 : 0, JSON.stringify(taste), clean(input.equipment, 500), clean(input.secretTip, 500)).run();
+  return json({ ok: true });
+}
+
+async function saveRecipeCooks(request, env, recipeId) {
+  if (!await env.DB.prepare("SELECT id FROM recipes WHERE id=?").bind(recipeId).first()) return json({ error: "NOT_FOUND" }, 404);
+  const input = await request.json().catch(() => ({})), cooks = Array.isArray(input.cooks) ? input.cooks.slice(0, 20) : [];
+  for (const cook of cooks) {
+    const member = clean(cook.member, 80);
+    if (!member || !await env.DB.prepare("SELECT id FROM family_members WHERE name=?").bind(member).first()) return json({ error: "UNKNOWN_USER" }, 400);
+  }
+  const statements = [env.DB.prepare("DELETE FROM recipe_cooks WHERE recipe_id=?").bind(recipeId)];
+  cooks.forEach((cook) => statements.push(env.DB.prepare("INSERT INTO recipe_cooks (recipe_id,member_name,task,created_at) VALUES (?,?,?,?)").bind(recipeId, clean(cook.member, 80), clean(cook.task, 120), Date.now())));
+  await env.DB.batch(statements);
+  return json({ ok: true });
+}
+
+async function saveRecipeLearning(request, env, recipeId) {
+  if (!await env.DB.prepare("SELECT id FROM recipes WHERE id=?").bind(recipeId).first()) return json({ error: "NOT_FOUND" }, 404);
+  const input = await request.json().catch(() => ({})), member = clean(input.member, 80);
+  if (!member || !await env.DB.prepare("SELECT id FROM family_members WHERE name=?").bind(member).first()) return json({ error: "UNKNOWN_USER" }, 400);
+  await env.DB.prepare("INSERT INTO recipe_learnings (recipe_id,member_name,created_at) VALUES (?,?,?) ON CONFLICT(recipe_id,member_name) DO NOTHING").bind(recipeId, member, Date.now()).run();
+  return json({ ok: true });
+}
+
 async function replaceRecipeImages(request, env, id) {
   if (!await env.DB.prepare("SELECT id FROM recipes WHERE id=?").bind(id).first()) return json({ error: "NOT_FOUND" }, 404);
   const form = await request.formData();
@@ -556,6 +594,12 @@ export default {
       if (request.method === "POST" && comments) return addRecipeComment(request, env, decodeURIComponent(comments[1]));
       const ratings = /^\/api\/recipes\/([^/]+)\/ratings$/.exec(url.pathname);
       if (request.method === "POST" && ratings) return rateRecipe(request, env, decodeURIComponent(ratings[1]));
+      const familyTools = /^\/api\/recipes\/([^/]+)\/family-tools$/.exec(url.pathname);
+      if (request.method === "PUT" && familyTools) return saveRecipeFamilyTools(request, env, decodeURIComponent(familyTools[1]));
+      const cooks = /^\/api\/recipes\/([^/]+)\/cooks$/.exec(url.pathname);
+      if (request.method === "PUT" && cooks) return saveRecipeCooks(request, env, decodeURIComponent(cooks[1]));
+      const learned = /^\/api\/recipes\/([^/]+)\/learned$/.exec(url.pathname);
+      if (request.method === "POST" && learned) return saveRecipeLearning(request, env, decodeURIComponent(learned[1]));
       if (request.method === "POST" && url.pathname === "/api/family") return addFamilyMember(request, env);
       const familyName = /^\/api\/family\/([^/]+)\/name$/.exec(url.pathname);
       if (request.method === "PATCH" && familyName) return renameFamilyMember(request, env, decodeURIComponent(familyName[1]));
@@ -580,5 +624,3 @@ export default {
     }
   },
 };
-
-// deployment trigger: keep the hosted project rebuild in sync with source assets
