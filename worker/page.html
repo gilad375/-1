@@ -163,6 +163,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .legalModal .modalBox{line-height:1.7}.legalModal h3{margin:18px 0 4px}.legalModal p,.legalModal li{color:#453832}.legalModal a{color:#174f7a;text-decoration:underline;font-weight:700}.legalModal ul{padding-inline-start:24px}
 .footerLinks{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.footerLinks a{color:#3f3029;text-decoration:underline;text-underline-offset:3px}.footerLinks a:hover{color:var(--accent)}
 </style>
+<style>
+.safeCategoryRow{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}.safeChip{background:#fff;border:1px solid var(--line);padding:11px 16px;border-radius:999px;font-weight:800;color:var(--ink)}.safeChip:hover{border-color:var(--accent);color:var(--accent)}.safeToolsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0}.safeTool{background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}.safeTool h3{margin:0 0 8px;font-family:Georgia,serif}.safeTool p{color:var(--muted);margin:0 0 12px}.safeTool input,.safeTool select{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:5px 0 10px}.smartResults{display:grid;gap:8px;margin-top:12px}.smartRecipe{display:flex;justify-content:space-between;align-items:center;text-align:right;background:#fff8f2;border:1px solid #f0ddd1;border-radius:13px;padding:10px 12px}.smartRecipe small{color:var(--muted)}.smartEmpty,.smartInfo{color:var(--muted);font-size:14px}.mealLine{padding:8px 0;border-bottom:1px solid var(--line)}.qrBox{text-align:center;margin-top:10px}.qrBox img{width:190px;height:190px;display:block;margin:auto;border-radius:12px}.qrBox small{display:block;margin-top:6px;color:var(--muted)}.timerText{font-size:28px;font-weight:800;margin-top:8px;color:var(--accent)}.togetherRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tasteBox>div{display:grid;grid-template-columns:55px 1fr 38px;gap:8px;align-items:center;margin:7px 0}.tasteBox progress{width:100%}@media(max-width:760px){.safeToolsGrid{grid-template-columns:1fr}.togetherRow{grid-template-columns:1fr}}
+.safeCompactDrawer{margin:22px 0;border:1px solid var(--line);border-radius:16px;background:#fbf6f2}.safeCompactDrawer>summary{cursor:pointer;padding:13px 16px;font-weight:800;list-style:none}.safeCompactDrawer>summary::-webkit-details-marker{display:none}.safeCompactDrawer>summary:after{content:'＋';float:left;color:var(--accent)}.safeCompactDrawer[open]>summary:after{content:'−'}.safeCompactDrawer>summary small{font-weight:400;color:var(--muted);margin-right:8px}.safeCompactContent{padding:0 14px 14px}.safeCompactContent .safeTool{padding:12px 14px;border-radius:14px;box-shadow:none}.safeCompactContent .safeToolsGrid{gap:10px;margin:10px 0}.safeCompactContent .safeTool input,.safeCompactContent .safeTool select{padding:8px 10px;margin:3px 0 7px}.safeRecipeMeta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:center}.safeRecipeMeta h3,.safeRecipeMeta>button{grid-column:1/-1}.safeRecipeMeta label{font-size:13px}.safeRecipeMeta label input[type=checkbox]{width:auto}.safeMetaTaste{display:flex;gap:8px;flex-wrap:wrap}.safeMetaTaste label{display:grid;grid-template-columns:auto 90px;gap:4px;align-items:center}.safeMetaTaste input{margin:0!important;padding:0!important}.recipeFamilyBadges{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}.recipeFamilyBadges span{font-size:12px;border-radius:999px;background:#f8eee6;padding:4px 8px;color:var(--accent)}@media(max-width:760px){.safeRecipeMeta{grid-template-columns:1fr 1fr}.safeRecipeMeta h3,.safeRecipeMeta>button{grid-column:1/-1}.safeMetaTaste label{grid-template-columns:auto 65px}}
+</style>
 </head>
 <body>
 <a class="skipLink" href="#home">דילוג לתוכן הראשי</a>
@@ -251,6 +255,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <button class="filter" onclick="filterCards('lunch',this)">ארוחות צהריים</button>
     <button class="filter" onclick="filterCards('dinner',this)">ארוחות ערב</button>
     <button class="filter" onclick="filterCards('dessert',this)">קינוחים</button>
+    <button class="filter" onclick="filterCards('starter',this)">מנות ראשונות</button>
+    <button class="filter" onclick="filterCards('main',this)">מנות עיקריות</button>
+    <button class="filter" onclick="filterCards('kids',this)">👧 לילדים</button>
+    <button class="filter" onclick="filterCards('golden',this)">⭐ מתכוני זהב</button>
     <button class="filter" onclick="filterCards('easy',this)">קל ומהיר</button>
     <button class="filter" onclick="filterCards('gluten-free',this)">🌾🚫 ללא גלוטן</button>
   </div>
@@ -355,7 +363,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
    <label class="field"><span>המתכון של… (למשל: סבתא רחל)</span><input id="recipeOrigin" maxlength="80" placeholder="אפשר להשאיר ריק"></label>
    <label class="field"><span>הקדשה משפחתית</span><input id="recipeDedication" maxlength="120" placeholder="למשל: העוגה האהובה על אבא לחג"></label>
    <label class="field"><span>תמונות של המתכון — עד 5 תמונות</span><input id="recipeImage" type="file" accept="image/*" multiple onchange="previewRecipeImages(this)"><small id="recipeImageStatus" style="display:block;margin-top:6px;color:var(--muted)">אפשר לבחור עד 5 תמונות. התמונות יוקטנו אוטומטית כדי שלא יכבידו על האתר.</small><div id="recipeImagePreview" class="editImagesGrid" style="margin-top:8px"></div></label>
-   <label class="field"><span>קטגוריה</span><select id="recipeCategory"><option>ארוחות בוקר</option><option>ארוחות צהריים</option><option>ארוחות ערב</option><option>קינוחים</option></select></label>
+   <label class="field"><span>קטגוריה</span><select id="recipeCategory"><option>ארוחות בוקר</option><option>מנות ראשונות</option><option>ארוחות צהריים</option><option>ארוחות ערב</option><option>מנות עיקריות</option><option>תוספות</option><option>קינוחים</option></select></label>
    <label class="field"><span>זמן הכנה</span><input id="recipeTime" type="number" placeholder="20"></label>
    <label class="field"><span>מספר מנות</span><input id="recipeServings" type="text" placeholder="למשל: 6 מנות"></label>
    <label class="field"><span>רמת קושי</span><select id="recipeDifficulty"><option>קל</option><option>בינוני</option><option>מאתגר</option></select></label>
@@ -393,7 +401,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
    <label class="field"><span>הקדשה משפחתית</span><input id="editRecipeDedication" maxlength="120" placeholder="למשל: העוגה האהובה על אבא לחג"></label>
    <label class="field"><span>מי הוסיף/ה את המתכון?</span><select id="editRecipeAuthor" onchange="toggleCustomAuthor('editRecipeAuthor','editRecipeAuthorCustomField')"></select></label>
    <label class="field" id="editRecipeAuthorCustomField" hidden><span>השם לא ברשימה? כתבו אותו כאן</span><input id="editRecipeAuthorCustom" maxlength="80" placeholder="השם של מי שהוסיף/ה את המתכון"></label>
-   <label class="field"><span>קטגוריה</span><select id="editRecipeCategory"><option>ארוחת ערב</option><option>ארוחת צהריים</option><option>ארוחת בוקר</option><option>קינוחים</option></select></label>
+   <label class="field"><span>קטגוריה</span><select id="editRecipeCategory"><option>ארוחות בוקר</option><option>מנות ראשונות</option><option>ארוחות צהריים</option><option>ארוחות ערב</option><option>מנות עיקריות</option><option>תוספות</option><option>קינוחים</option></select></label>
    <label class="field"><span>זמן הכנה בדקות</span><input id="editRecipeTime" type="number" min="0"></label>
    <label class="field"><span>מספר מנות / תבנית</span><input id="editRecipeServings" type="text"></label>
    <label class="field"><span>רמת קושי</span><select id="editRecipeDifficulty"><option>קל</option><option>בינוני</option><option>מאתגר</option></select></label>
@@ -1174,7 +1182,7 @@ renderFamily();renderRecipes();
   function canonicalCategory(r){
     const n=(r.name||'').trim();
     const c=(r.category||'').trim();
-    if(['ארוחות בוקר','ארוחות צהריים','ארוחות ערב','קינוחים'].includes(c)) return c;
+    if(['ארוחות בוקר','ארוחות צהריים','ארוחות ערב','מנות ראשונות','מנות עיקריות','תוספות','קינוחים'].includes(c)) return c;
     if(['עוגת שוקולד','עוגיות שוקולד צ׳יפס','בראוניז שוקולד עם תערובת'].includes(n)) return 'קינוחים';
     if(['פנקייקים קלאסיים','קרפים','מופלטה'].includes(n)) return 'ארוחות בוקר';
     if(['פסטה איטלקית ביתית'].includes(n)) return 'ארוחות צהריים';
@@ -1216,12 +1224,12 @@ renderFamily();renderRecipes();
       breakfast:'ארוחות בוקר',
       lunch:'ארוחות צהריים',
       dinner:'ארוחות ערב',
-      dessert:'קינוחים'
+      dessert:'קינוחים',starter:'מנות ראשונות',main:'מנות עיקריות'
     };
     const selected=window.activeRecipeCategory;
     const catOK=selected==='all' ||
       (selected==='easy' ? (diff==='קל' && getMinutes(r.time)<=30) :
-      (selected==='gluten-free' ? Boolean(r.glutenFree) : cat===categoryMap[selected]));
+      (selected==='gluten-free' ? Boolean(r.glutenFree) : selected==='kids' ? Boolean(r.kids) : selected==='golden' ? Boolean(r.golden) : selected==='starter' ? /מנות ראשונות/.test(cat) : selected==='main' ? /מנות עיקריות/.test(cat) : cat===categoryMap[selected]));
     const diffOK=window.activeRecipeDifficulty==='all' || diff===window.activeRecipeDifficulty;
     const q=(window.recipeQuery||'').trim().toLowerCase();
     const searchable=[r.name,r.ingredients,r.category,r.author,r.story,r.steps]
@@ -1290,7 +1298,8 @@ renderFamily();renderRecipes();
       const media=imgs[0]?`<img src="${imgs[0]}" alt="תמונת ${r.name}" style="width:100%;height:100%;object-fit:cover">`:'<div class="photoPlaceholder">אפשר להוסיף תמונות משלכם</div>';
       const familyNotes=`<div class="familyRecipeNotes"><span>👩‍🍳 נוסף על ידי ${escapeHTML(r.author||'המשפחה')}</span>${getFavorites().includes(r.id)?'<span class="familyFavorite">❤️ המתכון האהוב על המשפחה</span>':''}${r.story?'<span class="familyStory">📖 הסיפור של המתכון</span>':''}</div>`;
       const ratings=r.ratings||[],rating=ratings.length?`<div class="recipeQuickFacts"><span>⭐ ${(ratings.reduce((sum,item)=>sum+Number(item.value||0),0)/ratings.length).toFixed(1)} מתוך ${ratings.length} דירוגים</span></div>`:'';
-      card.innerHTML=`<div class="food a">${media}${r.glutenFree?'<span class="glutenFreeBadge">🌾🚫 ללא גלוטן</span>':''}</div><div class="cardBody"><h3 class="recipeNameAboveActions">${escapeHTML(r.name)}</h3><div class="recipeQuickFacts"><span>⏱ ${r.time||'לא צוין'}</span><span>🍽 ${r.servings||'לא צוין'}</span></div><div class="recipeQuickFacts"><span>🍰 ${cat}</span><span>⭐ ${diff}</span></div>${rating}${familyNotes}<button class="btn primary recipeCardOpen" onclick="event.stopPropagation();openSavedRecipe(${i})">לצפייה במתכון ←</button></div>`;
+      const familyBadges=`<div class="recipeFamilyBadges">${r.kids?'<span>👧 לילדים</span>':''}${r.golden?'<span>⭐ מתכון זהב</span>':''}</div>`;
+      card.innerHTML=`<div class="food a">${media}${r.glutenFree?'<span class="glutenFreeBadge">🌾🚫 ללא גלוטן</span>':''}</div><div class="cardBody"><h3 class="recipeNameAboveActions">${escapeHTML(r.name)}</h3><div class="recipeQuickFacts"><span>⏱ ${r.time||'לא צוין'}</span><span>🍽 ${r.servings||'לא צוין'}</span></div><div class="recipeQuickFacts"><span>🍰 ${cat}</span><span>⭐ ${diff}</span></div>${familyBadges}${rating}${familyNotes}<button class="btn primary recipeCardOpen" onclick="event.stopPropagation();openSavedRecipe(${i})">לצפייה במתכון ←</button></div>`;
       card.onclick=()=>openSavedRecipe(i);
       box.appendChild(card);
     });
@@ -1330,7 +1339,7 @@ renderFamily();renderRecipes();
     const category=document.getElementById('editRecipeCategory');
     if(category){
       category.innerHTML='';
-      ['ארוחות בוקר','ארוחות צהריים','ארוחות ערב','קינוחים'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;category.appendChild(o)});
+      ['ארוחות בוקר','מנות ראשונות','ארוחות צהריים','ארוחות ערב','מנות עיקריות','תוספות','קינוחים'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;category.appendChild(o)});
       category.value=canonicalCategory(r);
     }
     const diff=document.getElementById('editRecipeDifficulty');
@@ -1427,7 +1436,7 @@ renderFamily();renderRecipes();
   const editCat=document.getElementById('editRecipeCategory');
   if(editCat){
     editCat.innerHTML='';
-    ['ארוחות בוקר','ארוחות צהריים','ארוחות ערב','קינוחים'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;editCat.appendChild(o)});
+    ['ארוחות בוקר','מנות ראשונות','ארוחות צהריים','ארוחות ערב','מנות עיקריות','תוספות','קינוחים'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;editCat.appendChild(o)});
   }
 
   migrateRecipeMeta();
@@ -1448,7 +1457,7 @@ renderFamily();renderRecipes();
  if(setRecipes(initial))localStorage.setItem(FAVORITES_KEY,JSON.stringify([...new Set(favorites)]));
  const originalSet=setRecipes;
  setRecipes=function(items){items.forEach(r=>{if(!r.id)r.id=(typeof crypto.randomUUID==='function'?crypto.randomUUID():'recipe-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2))});const ok=originalSet(items);if(ok)updateStats();return ok};
- function updateStats(){const recipes=getRecipes();const valid=new Set(recipes.map(r=>r.id));const values={recipes:recipes.length,family:getFamily().length,categories:new Set(recipes.map(r=>r.category).filter(Boolean)).size,saved:getFavorites().filter(id=>valid.has(id)).length};Object.entries(values).forEach(([key,n])=>{document.getElementById('stat-'+key).textContent=n});document.getElementById('favoriteCount').textContent=values.saved;}
+ function updateStats(){const recipes=getRecipes();const valid=new Set(recipes.map(r=>r.id));const values={recipes:recipes.length,family:getFamily().length,categories:new Set(recipes.map(r=>r.category).filter(Boolean)).size,saved:getFavorites().filter(id=>valid.has(id)).length};Object.entries(values).forEach(([key,n])=>{const stat=document.getElementById('stat-'+key);if(stat)stat.textContent=n});const favoriteCount=document.getElementById('favoriteCount');if(favoriteCount)favoriteCount.textContent=values.saved;}
  const oldRenderFamily=renderFamily;renderFamily=function(){oldRenderFamily();updateStats()};
  updateFavoriteCount=updateStats;
  searchRecipes=function(){window.recipeQuery=document.getElementById('heroSearch').value.trim();renderRecipes();document.getElementById('recipes').scrollIntoView({behavior:'smooth'})};
@@ -1472,6 +1481,88 @@ let sitePolicyReturnFocus=null;
 function openSitePolicy(event,id){event?.preventDefault();const panel=document.getElementById(id);if(!panel)return;sitePolicyReturnFocus=event?.currentTarget||document.activeElement;panel.classList.add("open");panel.querySelector(".close")?.focus()}
 function closeSitePolicy(id){document.getElementById(id)?.classList.remove("open");sitePolicyReturnFocus?.focus();sitePolicyReturnFocus=null}
 document.addEventListener("keydown",event=>{const panel=document.querySelector(".policyModal.open");if(!panel)return;if(event.key==="Escape"){closeSitePolicy(panel.id);return}if(event.key==="Tab"){const controls=[...panel.querySelectorAll('a[href],button:not([disabled])')];if(!controls.length)return;const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}});
+</script>
+<script>
+(function(){
+  'use strict';
+  function esc(v){const d=document.createElement('div');d.textContent=String(v??'');return d.innerHTML}
+  function recipes(){try{return typeof getRecipes==='function'?getRecipes():[]}catch(e){return[]}}
+  function text(r){return [r.name,r.category,r.ingredients,r.steps,r.story].map(x=>Array.isArray(x)?x.join(' '):String(x||'')).join(' ').toLowerCase()}
+  function has(r,terms){const t=text(r);return terms.some(x=>t.includes(x))}
+  function cat(r){const t=text(r);if(r.category)return String(r.category).toLowerCase();return t}
+  function isKids(r){return r.kids===true}
+  function isGolden(r){return r.golden===true}
+  function isFirst(r){return /מנה ראשונה|מנות ראשונות/.test(String(r.category||''))}
+  function isSalad(r){return /תוספ|סלט/.test(String(r.category||''))}
+  function isMain(r){return /עיקרית|עיקריות/.test(String(r.category||''))}
+  function isDessert(r){return /קינוח/.test(String(r.category||''))}
+  function renderList(list,el){
+    el.innerHTML=list.length?list.slice(0,12).map((r,i)=>`<button class="smartRecipe" type="button" data-smart-name="${esc(r.name)}"><b>${esc(r.name||'מתכון')}</b><small>${esc(r.category||'משפחתי')}</small></button>`).join(''):'<p class="smartEmpty">לא נמצאו כרגע מתכונים מתאימים.</p>';
+    el.querySelectorAll('.smartRecipe').forEach(b=>b.addEventListener('click',()=>{const rs=recipes(),r=rs.find(x=>x.name===b.dataset.smartName);if(r)window.openSavedRecipe?.(rs.indexOf(r))}));
+  }
+  function setup(){
+    if(document.getElementById('safeFamilyTools'))return;
+    const anchor=document.getElementById('categories')||document.getElementById('recipes');
+    if(!anchor)return;
+    const sec=document.createElement('section');sec.id='safeFamilyTools';sec.innerHTML=`
+      <details class="safeCompactDrawer"><summary>🍳 כלי בישול נוספים <small>ארוחה · הקראה · QR · טעם · משפחה</small></summary><div class="safeCompactContent">
+      <div class="safeCategoryRow">
+        <button class="safeChip" data-mode="first">🍴 מנות ראשונות</button><button class="safeChip" data-mode="salad">🥗 סלטים</button><button class="safeChip" data-mode="main">🍝 מנות עיקריות</button><button class="safeChip" data-mode="kids">👧 מתכונים לילדים</button><button class="safeChip" data-mode="golden">⭐ מתכוני זהב</button>
+      </div>
+      <div id="safeCategoryResults" class="smartResults"></div>
+      <article class="safeTool safeRecipeMeta"><h3>🏷️ פרטי משפחה למתכון</h3><select id="safeMetaSelect"><option value="">בחרו מתכון</option></select><label><input id="safeMetaKids" type="checkbox"> מתאים לילדים</label><label><input id="safeMetaGolden" type="checkbox"> ⭐ מתכון זהב</label><label>ציוד <input id="safeMetaEquipment" maxlength="500" placeholder="למשל: תבנית, מיקסר"></label><label>טיפ משפחתי <input id="safeMetaSecret" maxlength="500" placeholder="המרכיב הסודי או טיפ קטן"></label><div class="safeMetaTaste">${[['sweet','מתוק'],['salty','מלוח'],['spicy','חריף'],['sour','חמוץ']].map(([k,n])=>`<label>${n}<input type="range" min="0" max="5" value="0" data-taste="${k}"></label>`).join('')}</div><button class="btn ghost" id="safeMetaSave">שמירת פרטי המשפחה</button></article>
+      <div class="safeToolsGrid">
+        <article class="safeTool"><h3>🏠 יש לי בבית</h3><p>כתבו מצרכים שיש לכם, מופרדים בפסיקים.</p><input id="safeHave" placeholder="ביצים, קמח, חלב"><button class="btn primary" id="safeHaveBtn">מצאו מתכונים</button><div id="safeHaveResults" class="smartResults"></div></article>
+        <article class="safeTool"><h3>🚫 מרכיב שלא רוצים</h3><p>כתבו מצרכים להימנע מהם.</p><input id="safeAvoid" placeholder="אגוזים, חלב"><button class="btn ghost" id="safeAvoidBtn">סננו מתכונים</button><div id="safeAvoidResults" class="smartResults"></div></article>
+        <article class="safeTool"><h3>🍽️ בנה לי ארוחה</h3><p>בחרו כמה אנשים אוכלים וקבלו הצעה מלאה.</p><input id="safePeople" type="number" min="1" max="30" value="4"><button class="btn primary" id="safeMealBtn">בנה לי ארוחה</button><div id="safeMealResults" class="smartResults"></div></article>
+        <article class="safeTool"><h3>📱 QR לכל מתכון</h3><p>בחרו מתכון והציגו קוד QR לפתיחה מהטלפון.</p><select id="safeQrSelect"><option value="">בחרו מתכון</option></select><div id="safeQrBox" class="qrBox"></div></article>
+      </div>
+      <div class="safeToolsGrid">
+        <article class="safeTool"><h3>🔊 הקרא לי</h3><select id="safeSpeakSelect"><option value="">בחרו מתכון</option></select><button class="btn ghost" id="safeSpeakBtn">הקרא לי</button></article>
+        <article class="safeTool"><h3>⏰ טיימר</h3><input id="safeTimerMin" type="number" min="1" value="10"><button class="btn ghost" id="safeTimerBtn">הפעל טיימר</button><div id="safeTimerOut" class="timerText">מוכן</div></article>
+        <article class="safeTool"><h3>🍳 מה צריך להכין מראש?</h3><select id="safeEquipSelect"><option value="">בחרו מתכון</option></select><div id="safeEquipOut" class="smartInfo">בחרו מתכון כדי לראות ציוד.</div></article>
+        <article class="safeTool"><h3>💛 אם אהבתם את זה...</h3><select id="safeSimilarSelect"><option value="">בחרו מתכון</option></select><div id="safeSimilarOut" class="smartResults"></div></article>
+      </div>
+      <div class="safeToolsGrid">
+        <article class="safeTool"><h3>👩‍🍳 בואו נבשל יחד</h3><select id="safeTogetherSelect"><option value="">בחרו מתכון</option></select><div id="safeTogetherRows"></div><button class="btn ghost" id="safeTogetherAdd">＋ הוסף תפקיד</button></article>
+        <article class="safeTool"><h3>👅 מד הטעם</h3><select id="safeTasteSelect"><option value="">בחרו מתכון</option></select><div id="safeTasteOut" class="tasteBox">בחרו מתכון.</div></article>
+        <article class="safeTool"><h3>✨ המרכיב הסודי</h3><select id="safeSecretSelect"><option value="">בחרו מתכון</option></select><div id="safeSecretOut" class="smartInfo">טיפ משפחתי יופיע כאן.</div></article>
+        <article class="safeTool"><h3>📚 למדתי להכין</h3><input id="safeLearnName" placeholder="שם בן/בת המשפחה"><select id="safeLearnSelect"><option value="">בחרו מתכון</option></select><button class="btn ghost" id="safeLearnBtn">הוסיפו מתכון</button><div id="safeLearnOut" class="smartResults"></div></article>
+      </div></div></details>`;
+    anchor.parentNode.insertBefore(sec,anchor);
+
+    const refresh=()=>{
+      const rs=recipes();
+      ['safeQrSelect','safeSpeakSelect','safeEquipSelect','safeSimilarSelect','safeTogetherSelect','safeTasteSelect','safeSecretSelect','safeLearnSelect','safeMetaSelect'].forEach(id=>{const s=document.getElementById(id);if(!s)return;const first=s.options[0]?.outerHTML||'';s.innerHTML=first+rs.map((r,i)=>`<option value="${i}">${esc(r.name||'מתכון')}</option>`).join('')});
+      const family=document.getElementById('safeLearnName');if(family){const current=family.value;family.innerHTML='<option value="">בחרו בן/בת משפחה</option>'+(typeof getFamily==='function'?getFamily():[]).map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('');family.value=current}
+    };
+    refresh();
+    document.querySelector('.safeCompactDrawer')?.addEventListener('toggle',()=>{if(document.querySelector('.safeCompactDrawer').open)refresh()});
+    const selectedRecipe=id=>recipes()[Number(document.getElementById(id)?.value)];
+    const metaSelect=document.getElementById('safeMetaSelect');
+    const loadMeta=()=>{const r=selectedRecipe('safeMetaSelect');if(!r)return;document.getElementById('safeMetaKids').checked=!!r.kids;document.getElementById('safeMetaGolden').checked=!!r.golden;document.getElementById('safeMetaEquipment').value=r.equipment||'';document.getElementById('safeMetaSecret').value=r.secretTip||'';document.querySelectorAll('[data-taste]').forEach(x=>x.value=Number(r.taste?.[x.dataset.taste]||0))};
+    metaSelect.onchange=loadMeta;
+    document.getElementById('safeMetaSave').onclick=async()=>{const r=selectedRecipe('safeMetaSelect');if(!r?.id)return toast('בחרו מתכון ששמור בספר');const taste={};document.querySelectorAll('[data-taste]').forEach(x=>taste[x.dataset.taste]=Number(x.value));try{const response=await fetch(`/api/recipes/${encodeURIComponent(r.id)}/family-tools`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({kids:document.getElementById('safeMetaKids').checked,golden:document.getElementById('safeMetaGolden').checked,taste,equipment:document.getElementById('safeMetaEquipment').value,secretTip:document.getElementById('safeMetaSecret').value})});if(!response.ok)throw new Error();Object.assign(r,{kids:document.getElementById('safeMetaKids').checked,golden:document.getElementById('safeMetaGolden').checked,taste,equipment:document.getElementById('safeMetaEquipment').value,secretTip:document.getElementById('safeMetaSecret').value});window.renderRecipes?.();toast('פרטי המשפחה נשמרו')}catch{toast('לא הצלחנו לשמור כרגע. נסו שוב')}};
+    document.querySelectorAll('.safeChip').forEach(b=>b.addEventListener('click',()=>{const rs=recipes();let list=[];if(b.dataset.mode==='first')list=rs.filter(isFirst);if(b.dataset.mode==='salad')list=rs.filter(isSalad);if(b.dataset.mode==='main')list=rs.filter(isMain);if(b.dataset.mode==='kids')list=rs.filter(isKids);if(b.dataset.mode==='golden')list=rs.filter(isGolden);renderList(list,document.getElementById('safeCategoryResults'))}));
+    const parse=id=>(document.getElementById(id).value||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+    document.getElementById('safeHaveBtn').onclick=()=>{const need=parse('safeHave');const list=recipes().map(r=>({r,score:need.filter(n=>text(r).includes(n)).length})).filter(x=>need.length&&x.score>0).sort((a,b)=>b.score-a.score).map(x=>x.r);renderList(list,document.getElementById('safeHaveResults'))};
+    document.getElementById('safeAvoidBtn').onclick=()=>{const bad=parse('safeAvoid');const list=recipes().filter(r=>!bad.some(n=>text(r).includes(n)));renderList(list,document.getElementById('safeAvoidResults'))};
+    document.getElementById('safeMealBtn').onclick=()=>{const rs=recipes(),people=Math.max(1,Math.min(30,Number(document.getElementById('safePeople').value)||1));const slots=[['מנה ראשונה',rs.filter(isFirst)],['עיקרית',rs.filter(isMain)],['תוספת',rs.filter(isSalad)],['קינוח',rs.filter(isDessert)]];document.getElementById('safeMealResults').innerHTML=slots.map(([label,list])=>{const r=list[Math.floor(Math.random()*list.length)];return `<div class="mealLine"><b>${label}:</b> ${r?`<button class="textButton" type="button" data-meal-id="${esc(r.id)}">${esc(r.name)}</button>`:'לא מצאנו מתכון בקטגוריה הזו עדיין'}</div>`}).join('')+`<small>הצעה ל-${people} סועדים. הכמויות לא משתנות אוטומטית — בדקו את מספר המנות במתכון.</small>`;document.querySelectorAll('[data-meal-id]').forEach(b=>b.onclick=()=>{const i=rs.findIndex(x=>x.id===b.dataset.mealId);if(i>=0)window.openSavedRecipe?.(i)})};
+    document.getElementById('safeQrSelect').onchange=e=>{const r=selectedRecipe('safeQrSelect'),box=document.getElementById('safeQrBox');if(!r?.id){box.innerHTML='';return}const url=new URL(location.href);url.searchParams.set('recipe',r.id);url.hash='';box.innerHTML=`<img alt="QR למתכון" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url.href)}"><small>${esc(r.name)}</small>`};
+    document.getElementById('safeSpeakBtn').onclick=()=>{const r=recipes()[Number(document.getElementById('safeSpeakSelect').value)];if(!r||!('speechSynthesis' in window)){alert('הקראת מתכון אינה זמינה בדפדפן הזה.');return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(`המתכון ${r.name}. מצרכים: ${r.ingredients||'לא צוינו'}. שלבים: ${r.steps||'לא צוינו'}`);u.lang='he-IL';speechSynthesis.speak(u)};
+    let timer=null;document.getElementById('safeTimerBtn').onclick=()=>{clearInterval(timer);let sec=Math.max(1,Number(document.getElementById('safeTimerMin').value)||1)*60;const out=document.getElementById('safeTimerOut');const tick=()=>{const m=Math.floor(sec/60),s=String(sec%60).padStart(2,'0');out.textContent=`${m}:${s}`;if(sec<=0){clearInterval(timer);out.textContent='⏰ הזמן נגמר!';alert('⏰ הזמן נגמר!')}sec--};tick();timer=setInterval(tick,1000)};
+    document.getElementById('safeEquipSelect').onchange=e=>{const r=selectedRecipe('safeEquipSelect');document.getElementById('safeEquipOut').textContent=r?(r.equipment||'עוד לא הוזן ציוד למתכון. אפשר להוסיף אותו בפרטי המשפחה למעלה.'):'בחרו מתכון'};
+    document.getElementById('safeSimilarSelect').onchange=e=>{const rs=recipes(),r=selectedRecipe('safeSimilarSelect');const tokens=x=>String(x.ingredients||'').toLowerCase().split(/[,\n;]+/).map(v=>v.trim()).filter(v=>v.length>2);const base=new Set(tokens(r||{}));const list=r?rs.filter(x=>x.id!==r.id).map(x=>{const overlap=tokens(x).filter(v=>base.has(v)).length;const loved=(x.ratings||[]).reduce((n,z)=>n+Number(z.value||0),0)/Math.max(1,(x.ratings||[]).length);const fav=(typeof getFavorites==='function'&&getFavorites().includes(x.id))?2:0;return {x,score:overlap+fav+loved/5}}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5).map(x=>x.x):[];renderList(list,document.getElementById('safeSimilarOut'))};
+    const together=()=>{const box=document.getElementById('safeTogetherRows');if(!box.children.length) addRow(box);};
+    function addRow(box){const d=document.createElement('div');d.className='togetherRow';const person=document.createElement('select');person.className='cookMember';person.append(new Option('מי משתתף?',''));(typeof getFamily==='function'?getFamily():[]).forEach(m=>person.append(new Option(m.name,m.name)));const task=document.createElement('input');task.className='cookTask';task.placeholder='מה עושה? למשל: קישוט';d.append(person,task);box.appendChild(d)}
+    document.getElementById('safeTogetherAdd').onclick=()=>addRow(document.getElementById('safeTogetherRows'));together();
+    document.getElementById('safeTogetherSelect').onchange=()=>{const r=selectedRecipe('safeTogetherSelect'),box=document.getElementById('safeTogetherRows');box.replaceChildren();(r?.cooks||[]).forEach(c=>{addRow(box);const row=box.lastElementChild;row.querySelector('.cookMember').value=c.member;row.querySelector('.cookTask').value=c.task||''});if(!box.children.length)addRow(box);let save=document.getElementById('safeTogetherSave');if(!save){save=document.createElement('button');save.id='safeTogetherSave';save.className='btn ghost';save.textContent='שמירת המשתתפים';document.getElementById('safeTogetherAdd').after(save)}save.onclick=async()=>{const current=selectedRecipe('safeTogetherSelect');if(!current?.id)return toast('בחרו מתכון ששמור בספר');const cooks=[...box.querySelectorAll('.togetherRow')].map(row=>({member:row.querySelector('.cookMember').value,task:row.querySelector('.cookTask').value})).filter(x=>x.member);try{const res=await fetch(`/api/recipes/${encodeURIComponent(current.id)}/cooks`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({cooks})});if(!res.ok)throw new Error();current.cooks=cooks;toast('החלוקה נשמרה')}catch{toast('בחרו בני משפחה קיימים ונסו שוב')}}};
+    document.getElementById('safeTasteSelect').onchange=e=>{const r=selectedRecipe('safeTasteSelect'),t=r?.taste||{},labels=[['sweet','מתוק'],['salty','מלוח'],['spicy','חריף'],['sour','חמוץ']];document.getElementById('safeTasteOut').innerHTML=labels.some(([k])=>Number(t[k])>0)?labels.map(([k,n])=>{const v=Math.max(0,Math.min(5,Number(t[k])||0));return `<div><span>${n}</span><progress max="5" value="${v}"></progress><b>${v}/5</b></div>`}).join(''):'עדיין לא הוגדר מד טעם.'};
+    document.getElementById('safeSecretSelect').onchange=e=>{const r=selectedRecipe('safeSecretSelect');document.getElementById('safeSecretOut').textContent=r?(r.secretTip||'עוד לא נשמר טיפ למתכון הזה.'):'בחרו מתכון'};
+    document.getElementById('safeLearnBtn').onclick=async()=>{const name=(document.getElementById('safeLearnName').value||'').trim(),r=selectedRecipe('safeLearnSelect');if(!name||!r?.id)return toast('בחרו בן משפחה ומתכון');try{const res=await fetch(`/api/recipes/${encodeURIComponent(r.id)}/learned`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({member:name})});if(!res.ok)throw new Error();const data=await fetch('/api/data').then(x=>x.json()),member=data.family.find(m=>m.name===name),live=(typeof getFamily==='function'?getFamily():[]).find(m=>m.name===name);if(member&&live)live.learnedRecipeIds=member.learnedRecipeIds;window.renderFamily?.();document.getElementById('safeLearnOut').textContent=`${name} למד/ה להכין ${r.name}`;toast('נוסף לפרופיל המשפחתי')}catch{toast('בחרו בן משפחה קיים ונסו שוב')}};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
 </script>
 </body>
 </html>
