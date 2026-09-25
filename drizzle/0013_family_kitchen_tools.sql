@@ -1,0 +1,4 @@
+CREATE TABLE `recipe_family_tools` (`recipe_id` text PRIMARY KEY NOT NULL REFERENCES `recipes`(`id`) ON DELETE CASCADE, `kids` integer NOT NULL DEFAULT 0, `golden` integer NOT NULL DEFAULT 0, `taste_json` text NOT NULL DEFAULT '{}', `equipment` text NOT NULL DEFAULT '', `secret_tip` text NOT NULL DEFAULT '');
+CREATE TABLE `recipe_cooks` (`recipe_id` text NOT NULL REFERENCES `recipes`(`id`) ON DELETE CASCADE, `member_name` text NOT NULL, `task` text NOT NULL DEFAULT '', `created_at` integer NOT NULL, PRIMARY KEY (`recipe_id`,`member_name`));
+CREATE TABLE `recipe_learnings` (`recipe_id` text NOT NULL REFERENCES `recipes`(`id`) ON DELETE CASCADE, `member_name` text NOT NULL, `created_at` integer NOT NULL, PRIMARY KEY (`recipe_id`,`member_name`));
+CREATE INDEX `idx_recipe_learnings_member` ON `recipe_learnings` (`member_name`);
