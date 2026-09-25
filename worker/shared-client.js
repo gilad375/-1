@@ -10,28 +10,15 @@
   }
   const id = (value) => encodeURIComponent(value);
 
-  async function request(url, options = {}) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const error = new Error(body.error || "REQUEST_FAILED");
-        error.code = body.error;
-        throw error;
-      }
-      return body;
-    } catch (error) {
-      if (error?.name === "AbortError") {
-        const timeoutError = new Error("REQUEST_TIMEOUT");
-        timeoutError.code = "REQUEST_TIMEOUT";
-        throw timeoutError;
-      }
+  async function request(url, options) {
+    const response = await fetch(url, options);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.error || "REQUEST_FAILED");
+      error.code = body.error;
       throw error;
-    } finally {
-      clearTimeout(timeoutId);
     }
+    return body;
   }
 
   function messageFor(error) {
@@ -98,6 +85,8 @@
       } else avatar.textContent = member.name.charAt(0);
       const name = document.createElement("b"); name.textContent = member.name;
       card.append(avatar, name);
+      const learned = (member.learnedRecipeIds || []).map((recipeId) => shared.recipes.find((recipe) => recipe.id === recipeId)?.name).filter(Boolean);
+      if (learned.length) { const progress = document.createElement("small"); progress.className = "familyLearningProgress"; progress.textContent = document.documentElement.lang === "en" ? `📚 Learned to make: ${learned.slice(0, 3).join(" · ")}${learned.length > 3 ? ` and ${learned.length - 3} more` : ""}` : `📚 למד/ה להכין: ${learned.slice(0, 3).join(" · ")}${learned.length > 3 ? ` ועוד ${learned.length - 3}` : ""}`; card.appendChild(progress); }
       list.appendChild(card);
     });
     const note = document.getElementById("familyMessage");
@@ -171,19 +160,7 @@
       else renderDemoUsers();
       const newName = document.getElementById("demoNewName"); if (newName) newName.value = "";
       toast(adding ? `השם ${name} נוסף בהצלחה. ברוכים הבאים!` : `שלום ${name}! נכנסת לאתר`);
-    } catch (error) {
-      if (adding && (error?.code === "REQUEST_TIMEOUT" || error?.code === "REQUEST_FAILED" || !error?.code)) {
-        const updatedFamily = [...localFamily.filter(member => member.name !== name), { id: "local-" + Date.now(), name, bio: "נוסף/ה דרך מסך הכניסה", photo: "" }];
-        localStorage.setItem(FAMILY_KEY, JSON.stringify(updatedFamily));
-        shared.family = updatedFamily;
-        currentDemoUser = name;
-        localStorage.setItem(DEMO_USER_KEY, name);
-        renderSharedFamily();
-        toast("השם נשמר במכשיר. ננסה לסנכרן אותו עם הספר המשותף כשיהיה חיבור.");
-      } else {
-        toast(messageFor(error));
-      }
-    }
+    } catch (error) { toast(messageFor(error)); }
     finally { if (button) { button.disabled = false; button.textContent = "כניסה לאתר"; } }
   };
 
@@ -366,18 +343,6 @@
   }
 
   async function initializeShared() {
-    // Render any locally cached family names immediately so the login screen never
-    // stays on "טוען שמות…" while the shared API is loading.
-    if (localFamily.length || localRecipes.length) {
-      shared.family = localFamily;
-      shared.recipes = localRecipes;
-      renderSharedFamily();
-      renderRecipes();
-      updateSharedStats();
-    } else {
-      renderDemoUsers();
-    }
-
     try {
       let data = await request("/api/data");
       if (!(data.recipes || []).length && localRecipes.length) {
@@ -388,20 +353,13 @@
       localStorage.removeItem(FAMILY_KEY);
       shared.recipes = data.recipes || []; shared.family = data.family || []; shared.menus = data.menus || []; shared.stories = data.stories || []; shared.memories = data.memories || []; shared.mealPlans = data.mealPlans || []; shared.poll = data.poll || null; shared.events = data.events || []; shared.heroImage = data.heroImage || ""; shared.logoImage = data.logoImage || ""; shared.ready = true;
       renderSharedFamily(); renderHeroImage(); renderSiteLogo(); renderRecipes(); updateSharedStats(); renderFeatureSuite();
+      const recipeId = new URL(location.href).searchParams.get("recipe");
+      if (recipeId) { const index = shared.recipes.findIndex((recipe) => recipe.id === recipeId); if (index >= 0) window.openSavedRecipe?.(index); }
     } catch (error) {
       console.error(error);
-      shared.ready = false;
-      // Keep the local family list usable when the shared service is temporarily unavailable.
-      shared.family = localFamily;
-      shared.recipes = localRecipes;
-      renderSharedFamily();
-      renderRecipes();
-      updateSharedStats();
       const note = document.getElementById("familyMessage");
-      if (note) note.textContent = error?.code === "REQUEST_TIMEOUT"
-        ? "החיבור לספר המשותף לוקח זמן. אפשר להיכנס עם השמות שכבר נשמרו במכשיר ולנסות שוב אחר כך."
-        : "לא הצלחנו לטעון כרגע את הספר המשותף. אפשר להיכנס עם השמות שנשמרו במכשיר ולרענן שוב.";
-      toast("הספר נטען במצב מקומי זמני. אפשר לרענן שוב בעוד רגע.");
+      if (note) note.textContent = "לא הצלחנו לטעון את הספר המשותף. נסו לרענן את הדף.";
+      toast("לא הצלחנו לטעון את המתכונים המשותפים.");
     }
   }
 
@@ -768,7 +726,7 @@
     clearInterval(timerInterval);
     const paint = () => { const value = `${String(Math.floor(timerRemaining / 60)).padStart(2,"0")}:${String(timerRemaining % 60).padStart(2,"0")}`; document.querySelectorAll(".recipeTimerCountdown").forEach(el => el.textContent = value); };
     paint();
-    timerInterval = setInterval(() => { timerRemaining--; paint(); if (timerRemaining <= 0) { clearInterval(timerInterval); timerInterval = null; toast("⏰ הטיימר הסתיים"); try { navigator.vibrate?.([180,80,180]); } catch {} } }, 1000);
+    timerInterval = setInterval(() => { timerRemaining--; paint(); if (timerRemaining <= 0) { clearInterval(timerInterval); timerInterval = null; toast("⏰ הזמן נגמר!"); try { navigator.vibrate?.([180,80,180]); } catch {} } }, 1000);
   };
   const amountFractions = {"¼":.25,"½":.5,"¾":.75,"⅓":1/3,"⅔":2/3,"⅛":.125,"⅜":.375,"⅝":.625,"⅞":.875};
   function amountValue(value) { if (amountFractions[value] != null) return amountFractions[value]; if (value.includes("ו-")) { const [whole,part]=value.split("ו-"),[n,d]=part.split("/").map(Number); return Number(whole.trim())+n/d; } if (value.includes("/")) { const[n,d]=value.split("/").map(Number); return n/d; } return Number(value.replace(",",".")); }
@@ -777,6 +735,7 @@
     const recipe=window.currentRecipe,box=document.querySelector("#recipeModal .modalBox"); if(!recipe||!box)return;
     let extra=box.querySelector(".familyRecipeExtras");if(!extra){extra=node("section","familyRecipeExtras");box.appendChild(extra)}extra.replaceChildren();
     if(recipe.story||recipe.dedication||recipe.dietaryTag&&recipe.dietaryTag!=="לא צוין") {const memory=node("div","recipeMemory");if(recipe.dedication)memory.append(node("strong","","💌 הקדשה: "),node("span","",recipe.dedication));if(recipe.story)memory.append(node("p","",recipe.story));if(recipe.dietaryTag&&recipe.dietaryTag!=="לא צוין")memory.append(node("small","",`🍽️ ${recipe.dietaryTag}`));extra.appendChild(memory)}
+    if(recipe.equipment||recipe.secretTip||recipe.cooks?.length||Object.values(recipe.taste||{}).some(Number)) {const familyNote=node("section","recipeFamilyNotes");familyNote.append(node("h3","","📖 הסיפור המשפחתי למתכון"));if(recipe.equipment)familyNote.append(node("p","",`🍳 ציוד: ${recipe.equipment}`));if(recipe.secretTip)familyNote.append(node("p","",`✨ הטיפ הסודי של המשפחה: ${recipe.secretTip}`));if(recipe.cooks?.length)familyNote.append(node("p","",`👩‍🍳 בישלו יחד: ${recipe.cooks.map(c=>c.task?`${c.member} — ${c.task}`:c.member).join(" · ")}`));const tastes=[["sweet","מתוק"],["salty","מלוח"],["spicy","חריף"],["sour","חמוץ"]].filter(([key])=>Number(recipe.taste?.[key])>0);if(tastes.length)familyNote.append(node("small","",`👅 מד הטעם: ${tastes.map(([key,label])=>`${label} ${recipe.taste[key]}/5`).join(" · ")}`));extra.appendChild(familyNote)}
     const approvals=recipe.triedBy||[];extra.append(node("h3","","👍 נוסה ואושר במשפחה"),node("p","",approvals.length?`אושר על ידי: ${approvals.join(" · ")}`:"עוד לא קיבל אישור מבן משפחה נוסף."));
     const candidates=shared.family.filter(m=>m.name!==recipe.author&&!approvals.includes(m.name));if(candidates.length){const row=node("div","approvalForm"),select=document.createElement("select"),button=node("button","btn ghost","סימון נוסה ואושר");select.append(new Option("בחרו בן משפחה שניסה",""));candidates.forEach(m=>select.append(new Option(m.name,m.name)));button.onclick=async()=>{if(!select.value)return toast("בחרו בן משפחה שניסה את המתכון");try{await request(`/api/recipes/${id(recipe.id)}/approvals`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({member:select.value})});await refreshShared();recipe.triedBy=shared.recipes.find(r=>r.id===recipe.id)?.triedBy||[];renderRecipeExtras();toast("האישור נוסף למתכון")}catch(e){toast(messageFor(e))}};row.append(select,button);extra.appendChild(row)}
     const tryouts=recipe.tryouts||[],gallery=node("div","tryoutGallery");gallery.append(node("h4","","📸 תמונות של בני משפחה שהכינו את המנה"));if(tryouts.length){const grid=node("div","tryoutGrid");tryouts.forEach(item=>{const card=node("figure","tryoutCard"),img=node("img");img.src=item.image;img.alt=`המנה שהכין/ה ${item.author}`;card.append(img,node("figcaption","",`${item.author} · ${new Date(item.createdAt).toLocaleDateString("he-IL")}`));grid.appendChild(card)});gallery.appendChild(grid)}
@@ -914,9 +873,10 @@
     "💡 יש לכם משוב או רעיון לשיפור האתר?":"💡 Have feedback or an idea to improve the site?","לחצו כאן וספרו לנו":"Click here and tell us","מתכונים משפחתיים":"Family recipes","טבחים במשפחה":"Family cooks","קטגוריות":"Categories","מתכונים שנשמרו":"Saved recipes","המשפחה שלנו":"Our family","עד 20 בני משפחה יכולים להוסיף מתכונים ותמונות. כל מה שנשמר מופיע לכולם דרך הקישור המשותף.":"Up to 20 family members can add recipes and photos. Everything saved is shared with everyone using this link.","+ הוספת בן/בת משפחה":"+ Add family member","כל המתכונים":"All recipes","סנני, חפשי ושמרי את מה שאת אוהבת":"Filter, search, and save what you love","הכל":"All","ארוחות בוקר":"Breakfast","ארוחות צהריים":"Lunch","ארוחות ערב":"Dinner","קינוחים":"Desserts","קל ומהיר":"Quick & easy","🌾🚫 ללא גלוטן":"🌾🚫 Gluten-free","רמת קושי:":"Difficulty:","קל":"Easy","בינוני":"Medium","מאתגר":"Challenging",
     "מתכונים לחגים ולאירועים":"Recipes for holidays and events","בחרו אירוע ונציג רעיונות מהספר המשפחתי.":"Choose an occasion and we will show ideas from the family book.","לאיזה אירוע?":"Which occasion?","שבת":"Shabbat","ראש השנה":"Rosh Hashanah","חנוכה":"Hanukkah","פסח":"Passover","יום הולדת":"Birthday","יש לכם מתכון ששווה לשמור לדורות?":"Do you have a recipe worth saving for generations?","הוסיפו אותו לספר המשפחתי ושתפו את הסיפור שמאחוריו.":"Add it to the family book and share the story behind it.","🛒 רשימת קניות מאוחדת":"🛒 Combined shopping list","בחרו מתכונים לרשימה":"Choose recipes for your list","סמנו את המתכונים שתרצו להכין, וניצור רשימת מצרכים אחת.":"Select the recipes you want to make and we will create one ingredient list.","יצירת הרשימה":"Create list","עדיין לא בחרתם מתכונים.":"You have not selected any recipes yet.","רשימת הקניות שלכם":"Your shopping list","חזרה לבחירה":"Back to selection","העתקת הרשימה":"Copy list","העתקנו את רשימת הקניות.":"Your shopping list has been copied.",
     "יצירת קשר":"Contact","לשאלות או פניות אישיות, אפשר לכתוב לנו ישירות במייל.":"For questions or personal inquiries, email us directly.","משוב ורעיונות לשיפור":"Feedback and ideas","נשמח לשמוע מה אהבתם, מה כדאי לשנות ואילו דברים תרצו שנוסיף לאתר.":"We would love to hear what you liked, what we should change, and what you would like us to add.","השם שלכם (לא חובה)":"Your name (optional)","סוג הפנייה":"Message type","משוב":"Feedback","רעיון לשיפור":"Improvement idea","פנייה בנושא נגישות":"Accessibility request","פנייה בנושא פרטיות":"Privacy request","דיווח על תוכן פוגע או מפר זכויות":"Report harmful or infringing content","בקשת מחיקה או הסרת תוכן":"Deletion or content removal request","מה תרצו לספר לנו?":"What would you like to tell us?","שליחת הפנייה":"Send message","מידע ועזרה":"Information & help","תנאי שימוש":"Terms of use","מדיניות פרטיות":"Privacy policy","הצהרת נגישות":"Accessibility statement","שימוש משפחתי בלבד":"Family use only",
-    "מי מוסיף/ה את המתכון?":"Who is adding this recipe?","חייבים לבחור שם לפני שממשיכים לטופס המתכון.":"Please choose a name before continuing to the recipe form.","בחרו שם":"Choose a name","השם לא ברשימה? כתבו אותו כאן":"Name not on the list? Write it here","המשך לטופס המתכון":"Continue to recipe form","הוספת מתכון חדש":"Add a new recipe","שם המתכון":"Recipe name","המתכון של… (למשל: סבתא רחל)":"Recipe from… (for example: Grandma Rachel)","הקדשה משפחתית":"Family dedication","קטגוריה":"Category","זמן הכנה":"Prep time","מספר מנות":"Servings","סוג המתכון":"Recipe type","סיפור המתכון":"Recipe story","מצרכים":"Ingredients","שלבי הכנה":"Preparation steps","שמירת המתכון":"Save recipe","חזרה לבחירת השם":"Back to name selection","ביטול":"Cancel","עריכת תמונות":"Edit photos","עריכת כל המתכון":"Edit full recipe","שמירת התמונות":"Save photos","שמירת כל השינויים":"Save all changes","🔖 שמירת המתכון":"🔖 Save recipe","🗑️ מחיקת מתכון":"🗑️ Delete recipe","⬇ הורדת המתכון":"⬇ Download recipe","💬 שיתוף בוואטסאפ":"💬 Share on WhatsApp","🖨️ הדפסה":"🖨️ Print","👩‍🍳 להתחיל לבשל":"👩‍🍳 Start cooking","אופן ההכנה":"Instructions","תגובות והערות":"Comments and notes","השם שלך":"Your name","תגובה או טיפ":"Comment or tip","הוספת תגובה":"Add comment","הוספת בן/בת משפחה":"Add family member","תמונת פרופיל":"Profile photo","תיאור קצר":"Short description","שמירת המשתמש":"Save member"
+    "מי מוסיף/ה את המתכון?":"Who is adding this recipe?","חייבים לבחור שם לפני שממשיכים לטופס המתכון.":"Please choose a name before continuing to the recipe form.","בחרו שם":"Choose a name","השם לא ברשימה? כתבו אותו כאן":"Name not on the list? Write it here","המשך לטופס המתכון":"Continue to recipe form","הוספת מתכון חדש":"Add a new recipe","שם המתכון":"Recipe name","המתכון של… (למשל: סבתא רחל)":"Recipe from… (for example: Grandma Rachel)","הקדשה משפחתית":"Family dedication","קטגוריה":"Category","זמן הכנה":"Prep time","מספר מנות":"Servings","סוג המתכון":"Recipe type","סיפור המתכון":"Recipe story","מצרכים":"Ingredients","שלבי הכנה":"Preparation steps","שמירת המתכון":"Save recipe","חזרה לבחירת השם":"Back to name selection","ביטול":"Cancel","עריכת תמונות":"Edit photos","עריכת כל המתכון":"Edit full recipe","שמירת התמונות":"Save photos","שמירת כל השינויים":"Save all changes","🔖 שמירת המתכון":"🔖 Save recipe","🗑️ מחיקת מתכון":"🗑️ Delete recipe","⬇ הורדת המתכון":"⬇ Download recipe","💬 שיתוף בוואטסאפ":"💬 Share on WhatsApp","🖨️ הדפסה":"🖨️ Print","👩‍🍳 להתחיל לבשל":"👩‍🍳 Start cooking","אופן ההכנה":"Instructions","תגובות והערות":"Comments and notes","השם שלך":"Your name","תגובה או טיפ":"Comment or tip","הוספת תגובה":"Add comment","הוספת בן/בת משפחה":"Add family member","תמונת פרופיל":"Profile photo","תיאור קצר":"Short description","שמירת המשתמש":"Save member",
+    "🍳 כלי בישול נוספים":"🍳 Cooking tools","ארוחה · הקראה · QR · טעם · משפחה":"Meal · Read aloud · QR · Taste · Family","🍴 מנות ראשונות":"🍴 Starters","מנות ראשונות":"Starters","🍝 מנות עיקריות":"🍝 Main courses","מנות עיקריות":"Main courses","תוספות":"Side dishes","👧 מתכונים לילדים":"👧 Kids' recipes","👧 לילדים":"👧 For kids","⭐ מתכוני זהב":"⭐ Golden recipes","🏷️ פרטי משפחה למתכון":"🏷️ Family recipe details","מתאים לילדים":"Suitable for kids","⭐ מתכון זהב":"⭐ Golden recipe","שמירת פרטי המשפחה":"Save family details","🏠 יש לי בבית":"🏠 What I have","🚫 מרכיב שלא רוצים":"🚫 Ingredient to avoid","🍽️ בנה לי ארוחה":"🍽️ Build a meal","📱 QR לכל מתכון":"📱 Recipe QR","🔊 הקרא לי":"🔊 Read aloud","⏰ טיימר":"⏰ Timer","🍳 מה צריך להכין מראש?":"🍳 Equipment needed","💛 אם אהבתם את זה...":"💛 If you liked this…","👩‍🍳 בואו נבשל יחד":"👩‍🍳 Cook together","👅 מד הטעם":"👅 Taste profile","✨ המרכיב הסודי":"✨ Family secret","📚 למדתי להכין":"📚 I learned to make","בחרו בן/בת משפחה":"Choose a family member","הוסיפו לפרופיל":"Add to profile","＋ הוסף תפקיד":"＋ Add a role","שמירת המשתתפים":"Save participants","ציוד":"Equipment","מתוק":"Sweet","מלוח":"Salty","חריף":"Spicy","חמוץ":"Sour","לא מצאנו מתכון בקטגוריה הזו עדיין":"No recipe in this category yet","בחרו מתכון ששמור בספר":"Choose a recipe saved in the book","עוד לא הוזן ציוד למתכון. אפשר להוסיף אותו בפרטי המשפחה למעלה.":"No equipment has been added yet. Add it in the family details above.","עוד לא נשמר טיפ למתכון הזה.":"No family tip has been saved yet.","⏰ הזמן נגמר!":"⏰ Time is up!"
   }));
-  const englishAttrs = new Map(Object.entries({"למשל: גלעד":"For example: Gilad","כתבו כאן את המשוב או הרעיון שלכם...":"Write your feedback or idea here...","השם של מי שמוסיף/ה את המתכון":"Name of the person adding the recipe","למשל: המתכון שלנו":"For example: Our recipe","אפשר להשאיר ריק":"Leave blank if you like","למשל: העוגה האהובה על אבא לחג":"For example: Dad's favorite holiday cake","למשל: 6 מנות":"For example: 6 servings","מי הכין אותו? מאיפה הוא הגיע? למה הוא מיוחד?":"Who made it? Where did it come from? Why is it special?","שם בן/בת המשפחה":"Family member's name","למשל: אוהבת לאפות ולבשל":"For example: Loves baking and cooking"}));
+  const englishAttrs = new Map(Object.entries({"למשל: גלעד":"For example: Gilad","כתבו כאן את המשוב או הרעיון שלכם...":"Write your feedback or idea here...","השם של מי שמוסיף/ה את המתכון":"Name of the person adding the recipe","למשל: המתכון שלנו":"For example: Our recipe","אפשר להשאיר ריק":"Leave blank if you like","למשל: העוגה האהובה על אבא לחג":"For example: Dad's favorite holiday cake","למשל: 6 מנות":"For example: 6 servings","מי הכין אותו? מאיפה הוא הגיע? למה הוא מיוחד?":"Who made it? Where did it come from? Why is it special?","שם בן/בת המשפחה":"Family member's name","למשל: אוהבת לאפות ולבשל":"For example: Loves baking and cooking","ביצים, קמח, חלב":"Eggs, flour, milk","אגוזים, חלב":"Nuts, milk","למשל: תבנית, מיקסר":"For example: Baking tray, mixer","המרכיב הסודי או טיפ קטן":"A secret ingredient or small tip"}));
   function translateElement(el) { if (el.nodeType === Node.TEXT_NODE) { const value = el.nodeValue.trim(); if (english.has(value)) el.nodeValue = el.nodeValue.replace(value, english.get(value)); return; } if (el.nodeType !== Node.ELEMENT_NODE || el.closest("#savedRecipes, #recipeIngredients, #recipeSteps, #recipeTitle")) return; ["placeholder","aria-label","title"].forEach(attr => { const value=el.getAttribute(attr); if (englishAttrs.has(value)) el.setAttribute(attr, englishAttrs.get(value)); else if (english.has(value)) el.setAttribute(attr, english.get(value)); }); [...el.childNodes].forEach(translateElement); }
   function translateInterface() { document.documentElement.lang="en"; document.documentElement.dir="ltr"; document.title="Our Family Cookbook"; translateElement(document.body); const languageButton=document.getElementById("languageToggle"); if(languageButton) languageButton.textContent="🌐 עברית"; }
   window.toggleInterfaceLanguage = function () { const englishMode=localStorage.getItem("familyCookbookLanguage")==="en"; localStorage.setItem("familyCookbookLanguage",englishMode?"he":"en"); location.reload(); };
