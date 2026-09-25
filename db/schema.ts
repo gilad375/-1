@@ -28,6 +28,20 @@ export const recipeComments = sqliteTable("recipe_comments", {
   createdAt: integer("created_at").notNull(),
 }, (table) => [index("idx_recipe_comments_recipe_created").on(table.recipeId, table.createdAt)]);
 
+export const recipeFamilyTools = sqliteTable("recipe_family_tools", {
+  recipeId: text("recipe_id").primaryKey().references(() => recipes.id, { onDelete: "cascade" }),
+  kids: integer("kids", { mode: "boolean" }).notNull().default(false),
+  golden: integer("golden", { mode: "boolean" }).notNull().default(false),
+  tasteJson: text("taste_json").notNull().default("{}"), equipment: text("equipment").notNull().default(""), secretTip: text("secret_tip").notNull().default(""),
+});
+export const recipeCooks = sqliteTable("recipe_cooks", {
+  recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  memberName: text("member_name").notNull(), task: text("task").notNull().default(""), createdAt: integer("created_at").notNull(),
+}, (table) => [uniqueIndex("idx_recipe_cooks_member").on(table.recipeId, table.memberName)]);
+export const recipeLearnings = sqliteTable("recipe_learnings", {
+  recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }), memberName: text("member_name").notNull(), createdAt: integer("created_at").notNull(),
+}, (table) => [uniqueIndex("idx_recipe_learnings_recipe_member").on(table.recipeId, table.memberName), index("idx_recipe_learnings_member").on(table.memberName)]);
+
 export const recipeApprovals = sqliteTable("recipe_approvals", {
   id: text("id").primaryKey(),
   recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
