@@ -5,7 +5,7 @@ import worker from "../dist/server/index.js";
 
 const sqlite = new DatabaseSync(":memory:");
 sqlite.exec("PRAGMA foreign_keys=ON");
-for (const name of ["0000_moaning_toad_men.sql", "0001_closed_speed_demon.sql", "0002_omniscient_stature.sql", "0003_slimy_namorita.sql", "0004_abandoned_lord_hawal.sql", "0005_previous_prima.sql", "0006_wooden_living_lightning.sql", "0007_family_recipe_enhancements.sql", "0008_recipe_video_storage.sql", "0009_family_extras.sql", "0010_cooking_extras.sql", "0011_family_planning_memories.sql", "0012_family_recipe_ratings.sql"]) {
+for (const name of ["0000_moaning_toad_men.sql", "0001_closed_speed_demon.sql", "0002_omniscient_stature.sql", "0003_slimy_namorita.sql", "0004_abandoned_lord_hawal.sql", "0005_previous_prima.sql", "0006_wooden_living_lightning.sql", "0007_family_recipe_enhancements.sql", "0008_recipe_video_storage.sql", "0009_family_extras.sql", "0010_cooking_extras.sql", "0011_family_planning_memories.sql", "0012_family_recipe_ratings.sql", "0013_family_kitchen_tools.sql"]) {
   const sql = await readFile(new URL(`../drizzle/${name}`, import.meta.url), "utf8");
   for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) sqlite.exec(statement);
 }
@@ -49,6 +49,10 @@ assert.match(rootHtml, /🌾🚫 ללא גלוטן/);
 assert.match(rootHtml, /🗑️ מחיקת מתכון/);
 assert.match(rootHtml, /עד 20 בני משפחה/);
 assert.match(rootHtml, /filterCards\('gluten-free'/);
+assert.match(rootHtml, /safeCompactDrawer/);
+assert.match(rootHtml, /filterCards\('kids'/);
+assert.match(rootHtml, /שמירת פרטי המשפחה/);
+assert.match(rootHtml, /safeMetaTaste/);
 assert.match(rootHtml, /recipeAuthorLine/);
 assert.match(rootHtml, /filterRecipesByAuthor/);
 assert.match(rootHtml, /משוב ורעיונות לשיפור/);
@@ -175,6 +179,21 @@ assert.equal(data.recipes[0].dedication, "לאבא");
 assert.equal(data.recipes[0].dietaryTag, "חלבי");
 assert.equal(data.recipes[0].servings, "4 מנות");
 assert.match(data.recipes[0].video, /^\/media\/recipes\//);
+
+response = await call(`/api/recipes/${data.recipes[0].id}/family-tools`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ kids: true, golden: true, taste: { sweet: 4, salty: 1, spicy: 0, sour: 2 }, equipment: "תבנית", secretTip: "קמצוץ וניל" }) });
+assert.equal(response.status, 200);
+response = await call(`/api/recipes/${data.recipes[0].id}/cooks`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ cooks: [{ member: "עלמה", task: "קישוט" }] }) });
+assert.equal(response.status, 200);
+response = await call(`/api/recipes/${data.recipes[0].id}/learned`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ member: "עלמה" }) });
+assert.equal(response.status, 200);
+data = await (await call("/api/data")).json();
+assert.equal(data.recipes[0].kids, true);
+assert.equal(data.recipes[0].golden, true);
+assert.deepEqual(data.recipes[0].taste, { sweet: 4, salty: 1, spicy: 0, sour: 2 });
+assert.equal(data.recipes[0].equipment, "תבנית");
+assert.equal(data.recipes[0].secretTip, "קמצוץ וניל");
+assert.deepEqual(data.recipes[0].cooks, [{ member: "עלמה", task: "קישוט" }]);
+assert.deepEqual(data.family.find(member => member.name === "עלמה").learnedRecipeIds, [data.recipes[0].id]);
 
 response = await call(`/api/recipes/${data.recipes[0].id}/approvals`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ member: "גלעד" }) });
 assert.equal(response.status, 400, "recipe authors cannot approve their own recipe");
