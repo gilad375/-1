@@ -580,3 +580,5 @@ export default {
     }
   },
 };
+
+// deployment trigger: keep the hosted project rebuild in sync with source assets
