@@ -5,7 +5,7 @@ import worker from "../dist/server/index.js";
 
 const sqlite = new DatabaseSync(":memory:");
 sqlite.exec("PRAGMA foreign_keys=ON");
-for (const name of ["0000_moaning_toad_men.sql", "0001_closed_speed_demon.sql", "0002_omniscient_stature.sql", "0003_slimy_namorita.sql", "0004_abandoned_lord_hawal.sql", "0005_previous_prima.sql", "0006_wooden_living_lightning.sql", "0007_family_recipe_enhancements.sql", "0008_recipe_video_storage.sql", "0009_family_extras.sql", "0010_cooking_extras.sql", "0011_family_planning_memories.sql", "0012_family_recipe_ratings.sql", "0013_family_kitchen_tools.sql"]) {
+for (const name of ["0000_moaning_toad_men.sql", "0001_closed_speed_demon.sql", "0002_omniscient_stature.sql", "0003_slimy_namorita.sql", "0004_abandoned_lord_hawal.sql", "0005_previous_prima.sql", "0006_wooden_living_lightning.sql", "0007_family_recipe_enhancements.sql", "0008_recipe_video_storage.sql", "0009_family_extras.sql", "0010_cooking_extras.sql", "0011_family_planning_memories.sql", "0012_family_recipe_ratings.sql", "0013_recipe_family_labels.sql", "0014_family_kitchen_tools.sql"]) {
   const sql = await readFile(new URL(`../drizzle/${name}`, import.meta.url), "utf8");
   for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) sqlite.exec(statement);
 }
@@ -163,7 +163,7 @@ const readInbox = await (await call("/api/messages?user=%D7%A2%D7%9C%D7%9E%D7%94
 assert.equal(Boolean(readInbox.messages.find((message) => message.id === directMessage.id).readAt), true);
 
 const recipeForm = new FormData();
-recipeForm.set("recipe", JSON.stringify({ name: "מתכון בדיקה", author: "גלעד", origin: "סבתא", category: "קינוחים", ingredients: "קמח", steps: "מערבבים", glutenFree: true, dedication: "לאבא", dietaryTag: "חלבי", servings: "4 מנות" }));
+recipeForm.set("recipe", JSON.stringify({ name: "מתכון בדיקה", author: "גלעד", origin: "סבתא", category: "קינוחים", ingredients: "קמח", steps: "מערבבים", glutenFree: true, dedication: "לאבא", dietaryTag: "חלבי", servings: "4 מנות", kidsFriendly: true, goldenRecipe: true, secretIngredient: "סוד של סבתא", equipment: "קערה", tasteProfile: "מתוק ועדין" }));
 recipeForm.set("images", new File([new Uint8Array([4, 5, 6])], "dish.jpg", { type: "image/jpeg" }));
 recipeForm.set("video", new File([new Uint8Array([7, 8, 9])], "clip.mp4", { type: "video/mp4" }));
 assert.equal((await call("/api/recipes", { method: "POST", body: recipeForm })).status, 201);
@@ -178,6 +178,11 @@ assert.equal(data.recipes[0].origin, "סבתא");
 assert.equal(data.recipes[0].dedication, "לאבא");
 assert.equal(data.recipes[0].dietaryTag, "חלבי");
 assert.equal(data.recipes[0].servings, "4 מנות");
+assert.equal(data.recipes[0].kids, true, "existing recipe labels should appear in the compact family tools");
+assert.equal(data.recipes[0].golden, true);
+assert.equal(data.recipes[0].secretTip, "סוד של סבתא");
+assert.equal(data.recipes[0].equipment, "קערה");
+assert.equal(data.recipes[0].tasteProfile, "מתוק ועדין");
 assert.match(data.recipes[0].video, /^\/media\/recipes\//);
 
 response = await call(`/api/recipes/${data.recipes[0].id}/family-tools`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ kids: true, golden: true, taste: { sweet: 4, salty: 1, spicy: 0, sour: 2 }, equipment: "תבנית", secretTip: "קמצוץ וניל" }) });
@@ -192,6 +197,10 @@ assert.equal(data.recipes[0].golden, true);
 assert.deepEqual(data.recipes[0].taste, { sweet: 4, salty: 1, spicy: 0, sour: 2 });
 assert.equal(data.recipes[0].equipment, "תבנית");
 assert.equal(data.recipes[0].secretTip, "קמצוץ וניל");
+assert.equal(data.recipes[0].secretIngredient, "קמצוץ וניל", "family tools should keep the earlier recipe fields in sync");
+assert.equal(data.recipes[0].kidsFriendly, true);
+assert.equal(data.recipes[0].goldenRecipe, true);
+assert.match(data.recipes[0].tasteProfile, /מתוק 4\/5/);
 assert.deepEqual(data.recipes[0].cooks, [{ member: "עלמה", task: "קישוט" }]);
 assert.deepEqual(data.family.find(member => member.name === "עלמה").learnedRecipeIds, [data.recipes[0].id]);
 
