@@ -11,6 +11,11 @@ export const recipes = sqliteTable("recipes", {
   dietaryTag: text("dietary_tag").notNull().default("לא צוין"),
   ingredients: text("ingredients").notNull().default(""), steps: text("steps").notNull().default(""),
   glutenFree: integer("gluten_free", { mode: "boolean" }).notNull().default(false),
+  kidsFriendly: integer("kids_friendly", { mode: "boolean" }).notNull().default(false),
+  goldenRecipe: integer("golden_recipe", { mode: "boolean" }).notNull().default(false),
+  secretIngredient: text("secret_ingredient").notNull().default(""),
+  equipment: text("equipment").notNull().default(""),
+  tasteProfile: text("taste_profile").notNull().default(""),
   videoKey: text("video_key"),
   createdAt: integer("created_at").notNull(),
 });
