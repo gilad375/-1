@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bash scripts/build.sh",
+    "build": "node scripts/build.mjs",
     "validate": "node scripts/validate-artifact.mjs",
     "test": "node scripts/test-worker.mjs"
   },
