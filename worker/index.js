@@ -21,6 +21,10 @@ function recipeValues(input = {}) {
     dietaryTag: ["טבעוני", "צמחוני", "פרווה", "חלבי", "בשרי"].includes(clean(input.dietaryTag, 20)) ? clean(input.dietaryTag, 20) : "לא צוין",
     story: clean(input.story, 4000), ingredients: clean(input.ingredients, 12000), steps: clean(input.steps, 12000),
     glutenFree: input.glutenFree === true || input.glutenFree === 1 || input.glutenFree === "1",
+    kidsFriendly: input.kidsFriendly === true || input.kidsFriendly === 1 || input.kidsFriendly === "1",
+    goldenRecipe: input.goldenRecipe === true || input.goldenRecipe === 1 || input.goldenRecipe === "1",
+    secretIngredient: clean(input.secretIngredient, 800), equipment: clean(input.equipment, 1000),
+    tasteProfile: clean(input.tasteProfile, 120),
   };
 }
 
@@ -67,9 +71,9 @@ async function listData(env) {
     recipes: recipeRows.results.map((r) => ({
       id: r.id, name: r.name, author: r.author, category: r.category, time: r.time,
       servings: r.servings, difficulty: r.difficulty, story: r.story, origin: r.origin || "", dedication: r.dedication || "", dietaryTag: r.dietary_tag || "לא צוין",
-      ingredients: r.ingredients, steps: r.steps, glutenFree: Boolean(r.gluten_free), createdAt: new Date(r.created_at).toISOString(),
+      ingredients: r.ingredients, steps: r.steps, glutenFree: Boolean(r.gluten_free), kidsFriendly: Boolean(r.kids_friendly), goldenRecipe: Boolean(r.golden_recipe), secretIngredient: r.secret_ingredient || "", equipment: r.equipment || "", tasteProfile: r.taste_profile || "", createdAt: new Date(r.created_at).toISOString(),
       images: imageMap.get(r.id) || [], video: mediaUrl(r.video_key), triedBy: approvalMap.get(r.id) || [], tryouts: tryoutMap.get(r.id) || [], ratings: ratingMap.get(r.id) || [],
-      ...(toolsMap.get(r.id) || { kids: false, golden: false, taste: {}, equipment: "", secretTip: "" }), cooks: cooksMap.get(r.id) || [],
+      ...(toolsMap.get(r.id) || { kids: Boolean(r.kids_friendly), golden: Boolean(r.golden_recipe), taste: {}, equipment: r.equipment || "", secretTip: r.secret_ingredient || "" }), cooks: cooksMap.get(r.id) || [],
     })),
     family: familyRows.results.map((m) => ({ id: m.id, name: m.name, bio: m.bio, photo: mediaUrl(m.photo_key), learnedRecipeIds: learningMap.get(m.name) || [] })),
     heroImage: mediaUrl(heroSetting?.value),
@@ -228,8 +232,8 @@ async function createRecipe(request, env) {
     for (const file of files) keys.push(await storeImage(env, file, `recipes/${id}`));
     if (videoFile instanceof File && videoFile.size > 0) videoKey = await storeVideo(env, videoFile, `recipes/${id}`);
     const statements = [env.DB.prepare(`INSERT INTO recipes
-      (id,name,author,category,time,servings,difficulty,story,ingredients,steps,gluten_free,created_at,origin,video_key,dedication,dietary_tag)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, value.name, value.author, value.category, value.time, value.servings, value.difficulty, value.story, value.ingredients, value.steps, value.glutenFree ? 1 : 0, Date.now(), value.origin, videoKey, value.dedication, value.dietaryTag)];
+      (id,name,author,category,time,servings,difficulty,story,ingredients,steps,gluten_free,kids_friendly,golden_recipe,secret_ingredient,equipment,taste_profile,created_at,origin,video_key,dedication,dietary_tag)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, value.name, value.author, value.category, value.time, value.servings, value.difficulty, value.story, value.ingredients, value.steps, value.glutenFree ? 1 : 0, value.kidsFriendly ? 1 : 0, value.goldenRecipe ? 1 : 0, value.secretIngredient, value.equipment, value.tasteProfile, Date.now(), value.origin, videoKey, value.dedication, value.dietaryTag)];
     keys.forEach((key, position) => statements.push(env.DB.prepare("INSERT INTO recipe_images (id,recipe_id,object_key,position) VALUES (?,?,?,?)").bind(crypto.randomUUID(), id, key, position)));
     await env.DB.batch(statements);
     return json({ ok: true, id }, 201);
@@ -244,8 +248,12 @@ async function createRecipe(request, env) {
 async function updateRecipe(request, env, id) {
   const value = recipeValues(await request.json());
   if (!value.name) return json({ error: "NAME_REQUIRED" }, 400);
-  const result = await env.DB.prepare(`UPDATE recipes SET name=?,author=?,category=?,time=?,servings=?,difficulty=?,story=?,ingredients=?,steps=?,gluten_free=?,origin=?,dedication=?,dietary_tag=? WHERE id=?`)
-    .bind(value.name, value.author, value.category, value.time, value.servings, value.difficulty, value.story, value.ingredients, value.steps, value.glutenFree ? 1 : 0, value.origin, value.dedication, value.dietaryTag, id).run();
+  const [result] = await env.DB.batch([
+    env.DB.prepare(`UPDATE recipes SET name=?,author=?,category=?,time=?,servings=?,difficulty=?,story=?,ingredients=?,steps=?,gluten_free=?,kids_friendly=?,golden_recipe=?,secret_ingredient=?,equipment=?,taste_profile=?,origin=?,dedication=?,dietary_tag=? WHERE id=?`)
+      .bind(value.name, value.author, value.category, value.time, value.servings, value.difficulty, value.story, value.ingredients, value.steps, value.glutenFree ? 1 : 0, value.kidsFriendly ? 1 : 0, value.goldenRecipe ? 1 : 0, value.secretIngredient, value.equipment, value.tasteProfile, value.origin, value.dedication, value.dietaryTag, id),
+    env.DB.prepare("UPDATE recipe_family_tools SET kids=?,golden=?,equipment=?,secret_tip=? WHERE recipe_id=?")
+      .bind(value.kidsFriendly ? 1 : 0, value.goldenRecipe ? 1 : 0, value.equipment, value.secretIngredient, id),
+  ]);
   return result.meta.changes ? json({ ok: true }) : json({ error: "NOT_FOUND" }, 404);
 }
 
@@ -329,8 +337,15 @@ async function saveRecipeFamilyTools(request, env, recipeId) {
   const input = await request.json().catch(() => ({}));
   const taste = {};
   for (const key of ["sweet", "salty", "spicy", "sour"]) taste[key] = Math.max(0, Math.min(5, Math.round(Number(input.taste?.[key]) || 0)));
-  await env.DB.prepare("INSERT INTO recipe_family_tools (recipe_id,kids,golden,taste_json,equipment,secret_tip) VALUES (?,?,?,?,?,?) ON CONFLICT(recipe_id) DO UPDATE SET kids=excluded.kids,golden=excluded.golden,taste_json=excluded.taste_json,equipment=excluded.equipment,secret_tip=excluded.secret_tip")
-    .bind(recipeId, input.kids ? 1 : 0, input.golden ? 1 : 0, JSON.stringify(taste), clean(input.equipment, 500), clean(input.secretTip, 500)).run();
+  const equipment = clean(input.equipment, 500), secretTip = clean(input.secretTip, 500);
+  const tasteProfile = [["sweet", "מתוק"], ["salty", "מלוח"], ["spicy", "חריף"], ["sour", "חמוץ"]]
+    .filter(([key]) => taste[key] > 0).map(([key, label]) => `${label} ${taste[key]}/5`).join(" · ");
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO recipe_family_tools (recipe_id,kids,golden,taste_json,equipment,secret_tip) VALUES (?,?,?,?,?,?) ON CONFLICT(recipe_id) DO UPDATE SET kids=excluded.kids,golden=excluded.golden,taste_json=excluded.taste_json,equipment=excluded.equipment,secret_tip=excluded.secret_tip")
+      .bind(recipeId, input.kids ? 1 : 0, input.golden ? 1 : 0, JSON.stringify(taste), equipment, secretTip),
+    env.DB.prepare("UPDATE recipes SET kids_friendly=?,golden_recipe=?,equipment=?,secret_ingredient=?,taste_profile=? WHERE id=?")
+      .bind(input.kids ? 1 : 0, input.golden ? 1 : 0, equipment, secretTip, tasteProfile, recipeId),
+  ]);
   return json({ ok: true });
 }
 
